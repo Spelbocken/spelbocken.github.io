@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="sv">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Spel</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <main id="login-screen" class="login-shell">
+      <section class="login-panel" aria-labelledby="login-title">
+        <p class="eyebrow">Spel</p>
+        <h1 id="login-title">Logga in</h1>
+        <p class="intro">Skriv mejl och lösenord. Nya medlemmar väljer sitt lösenord första gången.</p>
+
+        <form id="login-form" class="login-form">
+          <label for="email">Mejl</label>
+          <input id="email" name="email" type="email" autocomplete="email" placeholder="namn@example.com" required />
+          <label for="password">Lösenord</label>
+          <input id="password" name="password" type="password" autocomplete="current-password" placeholder="Skriv lösenord" required />
+          <button type="submit">Logga in</button>
+          <p id="login-error" class="form-error" role="alert"></p>
+        </form>
+
+      </section>
+    </main>
+
+    <div id="app-shell" class="app-shell hidden">
+      <header class="topbar">
+        <a class="brand" href="#hem" data-nav="hem" aria-label="Gå till Hem">
+          <span class="brand-mark">S</span>
+          <span>Spel</span>
+        </a>
+
+        <nav id="main-nav" class="main-nav" aria-label="Huvudmeny"></nav>
+
+        <button id="logout-button" class="ghost-button" type="button">Logga ut</button>
+      </header>
+
+      <main class="content-shell">
+        <section id="view-hem" class="view active" aria-labelledby="home-title">
+          <div class="page-heading">
+            <p class="eyebrow">Hem</p>
+            <h1 id="home-title">Välkommen till Spel</h1>
+            <p>Här ser du det som finns på hemsidan och vad som lagts till av administratörer och ägare.</p>
+          </div>
+
+          <div class="dashboard-grid">
+            <article class="panel">
+              <div class="panel-header">
+                <h2>Nyheter</h2>
+                <span id="item-count" class="pill">0 saker</span>
+              </div>
+              <ul id="public-items" class="item-list"></ul>
+            </article>
+
+            <article class="panel compact-panel">
+              <h2>Din åtkomst</h2>
+              <p id="access-text"></p>
+            </article>
+          </div>
+        </section>
+
+        <section id="view-admin" class="view" aria-labelledby="admin-title">
+          <div class="page-heading">
+            <p class="eyebrow">Adminkonsolen</p>
+            <h1 id="admin-title">Lägg till saker</h1>
+            <p>Admin kan lägga till innehåll på hemsidan. Inget kan tas bort här.</p>
+          </div>
+
+          <form id="add-item-form" class="panel form-panel">
+            <label for="item-title">Titel</label>
+            <input id="item-title" type="text" maxlength="60" placeholder="Exempel: Ny server öppnad" required />
+
+            <label for="item-text">Text</label>
+            <textarea id="item-text" rows="4" maxlength="240" placeholder="Skriv vad som ska synas på Hem" required></textarea>
+
+            <button type="submit">Lägg till</button>
+            <p id="admin-message" class="form-success" role="status"></p>
+          </form>
+        </section>
+
+        <section id="view-owner" class="view" aria-labelledby="owner-title">
+          <div class="page-heading">
+            <p class="eyebrow">Ägarkanalen</p>
+            <h1 id="owner-title">Ägarkanalen</h1>
+            <p>Ägaren kan hantera administratörer och se vad som händer på hemsidan.</p>
+          </div>
+
+          <div class="owner-grid">
+            <article class="panel">
+              <div class="panel-header">
+                <h2>Administratörer</h2>
+                <span id="admin-count" class="pill">0 admin</span>
+              </div>
+              <form id="add-admin-form" class="inline-form">
+                <label class="sr-only" for="admin-email">Adminmejl</label>
+                <input id="admin-email" type="email" placeholder="admin@example.com" required />
+                <button type="submit">Lägg till</button>
+              </form>
+              <ul id="admin-list" class="admin-list"></ul>
+              <p id="owner-message" class="form-success" role="status"></p>
+            </article>
+
+            <article class="panel">
+              <div class="panel-header">
+                <h2>Händelser</h2>
+                <span id="log-count" class="pill">0 loggar</span>
+              </div>
+              <ul id="activity-log" class="log-list"></ul>
+            </article>
+          </div>
+        </section>
+
+        <section id="view-profil" class="view" aria-labelledby="profile-title">
+          <div class="page-heading">
+            <p class="eyebrow">Profil</p>
+            <h1 id="profile-title">Din profil</h1>
+          </div>
+
+          <article class="profile-card">
+            <div class="avatar" id="profile-avatar">M</div>
+            <div>
+              <p class="muted">Inloggad som</p>
+              <h2 id="profile-email"></h2>
+              <p id="profile-role" class="role-badge"></p>
+            </div>
+          </article>
+        </section>
+      </main>
+    </div>
+
+    <script src="app.js"></script>
+  </body>
+</html>

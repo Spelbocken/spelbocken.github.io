@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 920 430" role="img" aria-labelledby="title desc">
+  <title id="title">theHunter: Call of the Wild</title>
+  <desc id="desc">Nature reserve banner for theHunter Call of the Wild</desc>
+  <defs>
+    <linearGradient id="sky" x1="0" x2="0" y1="0" y2="1">
+      <stop offset="0" stop-color="#143247"/>
+      <stop offset="0.58" stop-color="#315b49"/>
+      <stop offset="1" stop-color="#172215"/>
+    </linearGradient>
+  </defs>
+  <rect width="920" height="430" fill="url(#sky)"/>
+  <circle cx="753" cy="88" r="55" fill="#ffd98a" opacity=".78"/>
+  <path d="M0 282l96-82 71 53 97-102 117 119 92-72 113 85 92-128 127 127 115-60v208H0z" fill="#0d1a18" opacity=".72"/>
+  <path d="M0 331c148-66 279-41 404-20 167 28 304 47 516-41v160H0z" fill="#10180f"/>
+  <g fill="#1f3d24">
+    <path d="M125 255l32-70 31 70h-24v50h-16v-50z"/>
+    <path d="M218 276l40-95 42 95h-31v62h-21v-62z"/>
+    <path d="M791 262l35-80 35 80h-25v56h-18v-56z"/>
+  </g>
+  <g transform="translate(592 237)" fill="#d9c08a">
+    <path d="M0 43c38-44 89-43 130-8 23 19 37 19 63 8 8-4 13 7 6 13-38 33-101 45-156 27C15 74-7 59 0 43z"/>
+    <path d="M44 28c-12-25-10-54 4-79 10 22 19 47 17 75z"/>
+    <path d="M93 28c12-27 35-48 63-59-4 28-18 51-42 68z"/>
+    <circle cx="139" cy="35" r="6" fill="#111"/>
+  </g>
+  <text x="56" y="162" fill="#f8ffe8" font-family="Arial, Helvetica, sans-serif" font-size="48" font-weight="900">theHunter</text>
+  <text x="58" y="210" fill="#f8ffe8" font-family="Arial, Helvetica, sans-serif" font-size="35" font-weight="900">Call of the Wild</text>
+  <text x="60" y="255" fill="#ffd98a" font-family="Arial, Helvetica, sans-serif" font-size="25" font-weight="700">Maps • Animals • Class &amp; Level</text>
+</svg>

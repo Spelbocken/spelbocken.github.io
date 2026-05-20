@@ -1,0 +1,34 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 920 430" role="img" aria-labelledby="title desc">
+  <title id="title">Phasmophobia</title>
+  <desc id="desc">Dark ghost hunting banner for Phasmophobia</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0" stop-color="#071012"/>
+      <stop offset="0.55" stop-color="#122327"/>
+      <stop offset="1" stop-color="#050708"/>
+    </linearGradient>
+    <radialGradient id="light" cx="68%" cy="48%" r="42%">
+      <stop offset="0" stop-color="#d6fff2" stop-opacity="0.55"/>
+      <stop offset="1" stop-color="#d6fff2" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <rect width="920" height="430" fill="url(#bg)"/>
+  <rect width="920" height="430" fill="url(#light)"/>
+  <path d="M0 318c122-50 219-39 305-25 103 17 172 28 289-28 102-49 202-51 326 5v160H0z" fill="#05090b" opacity=".82"/>
+  <g opacity=".9">
+    <path d="M655 105c-68 0-116 50-116 126v93h232v-93c0-76-48-126-116-126z" fill="#d9fff5" opacity=".13"/>
+    <path d="M582 315c14-17 29-17 43 0 14 17 29 17 43 0 14-17 29-17 43 0 14 17 29 17 43 0v-82c0-65-39-105-99-105s-99 40-99 105v82c12 17 26 17 26 0z" fill="#eafff8" opacity=".22"/>
+    <circle cx="622" cy="220" r="11" fill="#061014"/>
+    <circle cx="688" cy="220" r="11" fill="#061014"/>
+    <path d="M625 267c22-15 43-15 65 0" stroke="#061014" stroke-width="9" stroke-linecap="round" fill="none"/>
+  </g>
+  <g fill="#9ef7d4" opacity=".42">
+    <circle cx="155" cy="97" r="3"/>
+    <circle cx="224" cy="142" r="2"/>
+    <circle cx="784" cy="74" r="3"/>
+    <circle cx="836" cy="154" r="2"/>
+    <circle cx="407" cy="84" r="2"/>
+  </g>
+  <text x="56" y="174" fill="#f2fffb" font-family="Arial, Helvetica, sans-serif" font-size="58" font-weight="900">Phasmophobia</text>
+  <text x="60" y="222" fill="#9ef7d4" font-family="Arial, Helvetica, sans-serif" font-size="25" font-weight="700">Ghosts • Evidence • Guide</text>
+</svg>
