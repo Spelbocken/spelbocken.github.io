@@ -9,6 +9,7 @@ const OWNER_PASSWORD_HASH = "9ed08ae94ed8cf876be0489086de7169f684cfbd3de1a3c136a
 const defaultState = {
   admins: DEFAULT_ADMINS,
   members: {},
+  users: {},
   items: [
     {
       title: "Phasmophobia",
@@ -68,6 +69,12 @@ const translations = {
     ownerIntro: "Ägaren kan hantera administratörer och se vad som händer på hemsidan.",
     admins: "Administratörer",
     events: "Händelser",
+    users: "Användare",
+    usersNote: "Här kan ägaren ändra roll på användare som finns i appens data.",
+    usersCount: (count) => `${count} användare`,
+    lastSeen: "Senast inne",
+    setRole: "Sätt roll",
+    onlineNow: "Inloggad nu",
     profile: "Din profil",
     loggedInAs: "Inloggad som",
     role: "Roll",
@@ -118,6 +125,12 @@ const translations = {
     ownerIntro: "The owner can manage administrators and see what happens on the website.",
     admins: "Administrators",
     events: "Events",
+    users: "Users",
+    usersNote: "Here the owner can change roles for users stored in the app data.",
+    usersCount: (count) => `${count} users`,
+    lastSeen: "Last seen",
+    setRole: "Set role",
+    onlineNow: "Logged in now",
     profile: "Your profile",
     loggedInAs: "Logged in as",
     role: "Role",
@@ -654,6 +667,7 @@ document.querySelector("#login-form").addEventListener("submit", async (event) =
     email,
     role
   };
+  registerUser(email, { isLoggedIn: true });
   saveSession();
 
   addLog(`${currentUser.email} loggade in som ${currentUser.role}.`);
@@ -665,6 +679,7 @@ document.querySelector("#login-form").addEventListener("submit", async (event) =
 
 document.querySelector("#logout-button").addEventListener("click", () => {
   if (currentUser) {
+    registerUser(currentUser.email, { isLoggedIn: false });
     addLog(`${currentUser.email} loggade ut.`);
   }
   currentUser = null;
@@ -739,6 +754,12 @@ window.addEventListener("storage", (event) => {
   applyIncomingState(JSON.parse(event.newValue));
 });
 
+window.addEventListener("beforeunload", () => {
+  if (currentUser) {
+    registerUser(currentUser.email, { isLoggedIn: false, broadcast: false });
+  }
+});
+
 if (liveChannel) {
   liveChannel.addEventListener("message", (event) => {
     if (event.data && event.data.type === "state-updated") {
@@ -758,6 +779,7 @@ function loadState() {
       ...parsed,
       admins: normalizeEmailList([...(parsed.admins || []), ...DEFAULT_ADMINS]),
       members: parsed.members || {},
+      users: parsed.users || {},
       updatedAt: parsed.updatedAt || new Date().toISOString()
     };
   } catch {
@@ -781,7 +803,8 @@ function applyIncomingState(nextState) {
     ...structuredClone(defaultState),
     ...nextState,
     admins: normalizeEmailList([...(nextState.admins || []), ...DEFAULT_ADMINS]),
-    members: nextState.members || {}
+    members: nextState.members || {},
+    users: nextState.users || {}
   };
   lastKnownUpdate = state.updatedAt;
   if (currentUser) {
@@ -877,8 +900,12 @@ function applyLanguage() {
 
   const adminHeading = document.querySelector("#view-owner .panel:first-child h2");
   if (adminHeading) adminHeading.textContent = t("admins");
-  const eventHeading = document.querySelector("#view-owner .panel:last-child h2");
+  const eventHeading = document.querySelector("#activity-log")?.closest(".panel")?.querySelector("h2");
   if (eventHeading) eventHeading.textContent = t("events");
+  const usersTitle = document.querySelector("#users-title");
+  if (usersTitle) usersTitle.textContent = t("users");
+  const usersNote = document.querySelector("#users-note");
+  if (usersNote) usersNote.textContent = t("usersNote");
   const loggedInAs = document.querySelector(".profile-card .muted");
   if (loggedInAs) loggedInAs.textContent = t("loggedInAs");
 }
@@ -906,12 +933,27 @@ function restoreSession() {
       email: normalizeEmail(session.email),
       role: getRoleForEmail(normalizeEmail(session.email))
     };
+    registerUser(currentUser.email, { isLoggedIn: true });
     showApp();
     return true;
   } catch {
     clearSession();
     return false;
   }
+}
+
+function registerUser(email, options = {}) {
+  const normalizedEmail = normalizeEmail(email);
+  if (!normalizedEmail) return;
+  const existing = state.users[normalizedEmail] || {};
+  state.users[normalizedEmail] = {
+    email: normalizedEmail,
+    firstSeen: existing.firstSeen || new Date().toISOString(),
+    lastSeen: new Date().toISOString(),
+    isLoggedIn: Boolean(options.isLoggedIn),
+    role: getRoleForEmail(normalizedEmail)
+  };
+  saveState({ broadcast: options.broadcast !== false });
 }
 
 function getRoleForEmail(email) {
@@ -1525,10 +1567,13 @@ function renderOwner() {
 
   const adminList = document.querySelector("#admin-list");
   const logList = document.querySelector("#activity-log");
+  const userRoleList = document.querySelector("#user-role-list");
   adminList.innerHTML = "";
   logList.innerHTML = "";
+  if (userRoleList) userRoleList.innerHTML = "";
   document.querySelector("#admin-count").textContent = `${state.admins.length} admin`;
   document.querySelector("#log-count").textContent = `${state.logs.length} loggar`;
+  renderUserRoleList();
 
   state.admins.forEach((email) => {
     const row = document.createElement("li");
@@ -1555,6 +1600,101 @@ function renderOwner() {
     row.querySelector(".item-meta").textContent = formatDate(log.createdAt);
     logList.append(row);
   });
+}
+
+function renderUserRoleList() {
+  const list = document.querySelector("#user-role-list");
+  const count = document.querySelector("#users-count");
+  if (!list || !count) return;
+
+  const users = getKnownUsers();
+  count.textContent = t("usersCount")(users.length);
+  list.innerHTML = "";
+
+  if (users.length === 0) {
+    list.innerHTML = `<li class="empty-update">${currentLanguage === "en" ? "No users yet." : "Inga användare ännu."}</li>`;
+    return;
+  }
+
+  users.forEach((user) => {
+    const role = getRoleForEmail(user.email);
+    const row = document.createElement("li");
+    row.className = "user-role-row";
+    row.innerHTML = `
+      <div>
+        <strong></strong>
+        <p></p>
+      </div>
+      <label>
+        <span></span>
+        <select></select>
+      </label>
+    `;
+    row.querySelector("strong").textContent = user.email;
+    row.querySelector("p").textContent = `${user.isLoggedIn ? t("onlineNow") + " • " : ""}${t("lastSeen")}: ${formatDate(user.lastSeen || user.firstSeen || new Date().toISOString())}`;
+    row.querySelector("label span").textContent = t("setRole");
+
+    const select = row.querySelector("select");
+    select.innerHTML = `
+      <option value="Medlem">${t("roles").Medlem}</option>
+      <option value="Admin">${t("roles").Admin}</option>
+      ${user.email === OWNER_EMAIL ? `<option value="Ägare">${t("roles").Ägare}</option>` : ""}
+    `;
+    select.value = role;
+    select.disabled = user.email === OWNER_EMAIL;
+    select.addEventListener("change", () => setUserRole(user.email, select.value));
+    list.append(row);
+  });
+}
+
+function getKnownUsers() {
+  const users = new Map();
+  Object.values(state.users || {}).forEach((user) => {
+    if (user && user.email) users.set(normalizeEmail(user.email), user);
+  });
+  Object.keys(state.members || {}).forEach((email) => {
+    const normalized = normalizeEmail(email);
+    users.set(normalized, {
+      ...(users.get(normalized) || {}),
+      email: normalized,
+      firstSeen: state.members[email].createdAt
+    });
+  });
+  state.admins.forEach((email) => {
+    const normalized = normalizeEmail(email);
+    users.set(normalized, {
+      ...(users.get(normalized) || {}),
+      email: normalized
+    });
+  });
+  users.set(OWNER_EMAIL, {
+    ...(users.get(OWNER_EMAIL) || {}),
+    email: OWNER_EMAIL
+  });
+  return [...users.values()].sort((a, b) => {
+    const aLogged = a.isLoggedIn ? 1 : 0;
+    const bLogged = b.isLoggedIn ? 1 : 0;
+    if (aLogged !== bLogged) return bLogged - aLogged;
+    return a.email.localeCompare(b.email);
+  });
+}
+
+function setUserRole(email, role) {
+  if (!canAccess("owner")) return;
+  const normalizedEmail = normalizeEmail(email);
+  if (normalizedEmail === OWNER_EMAIL) return;
+
+  if (role === "Admin") {
+    state.admins = normalizeEmailList([...state.admins, normalizedEmail]);
+    addLog(`${currentUser.email} gav ${normalizedEmail} rollen Admin.`);
+  } else {
+    state.admins = normalizeEmailList(state.admins.filter((adminEmail) => normalizeEmail(adminEmail) !== normalizedEmail));
+    addLog(`${currentUser.email} gav ${normalizedEmail} rollen Medlem.`);
+  }
+
+  registerUser(normalizedEmail, { isLoggedIn: Boolean(state.users[normalizedEmail]?.isLoggedIn), broadcast: false });
+  saveState();
+  renderAll();
 }
 
 function removeAdmin(email) {
