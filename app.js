@@ -1,5 +1,7 @@
 const OWNER_EMAIL = "patrik.ahlen05@gmail.com";
 const STORAGE_KEY = "spel-state-v3";
+const SESSION_KEY = "spel-session-v1";
+const LANGUAGE_KEY = "spel-language-v1";
 const ADMIN_PASSWORD_HASH = "257878632a1acffaa80a54905df09608319866e34c63098f5dd960deedaa12bb";
 const OWNER_PASSWORD_HASH = "9ed08ae94ed8cf876be0489086de7169f684cfbd3de1a3c136a4bae5aab20e5e";
 
@@ -33,7 +35,111 @@ const defaultState = {
 let state = loadState();
 let currentUser = null;
 let lastKnownUpdate = state.updatedAt;
+let currentLanguage = localStorage.getItem(LANGUAGE_KEY) || "sv";
 const liveChannel = "BroadcastChannel" in window ? new BroadcastChannel("spel-live-updates") : null;
+
+const translations = {
+  sv: {
+    loginTitle: "Logga in",
+    loginIntro: "Skriv mejl och lösenord. Nya medlemmar väljer sitt lösenord första gången.",
+    email: "Mejl",
+    password: "Lösenord",
+    emailPlaceholder: "namn@example.com",
+    passwordPlaceholder: "Skriv lösenord",
+    loginButton: "Logga in",
+    logout: "Logga ut",
+    nav: { hem: "Hem", admin: "Adminkonsolen", owner: "Ägarkanalen", profil: "Profil" },
+    homeTitle: "SPEL",
+    homeIntro: "Din ultimata guide till dina favoritspel",
+    explore: "Utforska",
+    updatesTitle: "Nya uppdateringar",
+    emptyUpdates: "Inga nya uppdateringar ännu.",
+    updatesCount: (count) => `${count} nya`,
+    adminTitle: "Lägg till saker",
+    adminIntro: "Admin kan lägga till innehåll på hemsidan. Inget kan tas bort här.",
+    title: "Titel",
+    itemTitlePlaceholder: "Exempel: Ny server öppnad",
+    text: "Text",
+    itemTextPlaceholder: "Skriv vad som ska synas på Hem",
+    add: "Lägg till",
+    added: "Saken är tillagd.",
+    ownerTitle: "Ägarkanalen",
+    ownerIntro: "Ägaren kan hantera administratörer och se vad som händer på hemsidan.",
+    admins: "Administratörer",
+    events: "Händelser",
+    profile: "Din profil",
+    loggedInAs: "Inloggad som",
+    role: "Roll",
+    backHome: "Tillbaka till Hem",
+    chooseGame: "Välj ett spel",
+    chooseGameIntro: "Klicka på ett spelkort på Hem för att öppna mer information.",
+    liveUpdated: "Sidan uppdaterades med nytt innehåll.",
+    accessText: "Välj ett spelkort på Hem för att öppna guide, codex eller sök.",
+    invalidEmail: "Skriv en giltig mejladress.",
+    writePassword: "Skriv ett lösenord.",
+    ownerWrong: "Fel lösenord för ägare.",
+    adminWrong: "Fel lösenord för admin.",
+    memberShort: "Välj minst 4 tecken som medlemslösenord.",
+    memberWrong: "Fel medlemslösenord.",
+    adminAdded: "Administratören är tillagd.",
+    adminRemoved: "Administratören är borttagen.",
+    adminExists: "Den mejlen är redan administratör.",
+    ownerNoAdmin: "Ägaren behöver inte läggas till som admin.",
+    adminPasswordNote: "Alla adminmejlar loggar in med Admin//123.",
+    remove: "Ta bort",
+    roles: { "Medlem": "Medlem", "Admin": "Admin", "Ägare": "Ägare" }
+  },
+  en: {
+    loginTitle: "Log in",
+    loginIntro: "Enter email and password. New members choose their password the first time.",
+    email: "Email",
+    password: "Password",
+    emailPlaceholder: "name@example.com",
+    passwordPlaceholder: "Enter password",
+    loginButton: "Log in",
+    logout: "Log out",
+    nav: { hem: "Home", admin: "Admin Console", owner: "Owner Channel", profil: "Profile" },
+    homeTitle: "GAMES",
+    homeIntro: "Your ultimate guide to your favorite games",
+    explore: "Explore",
+    updatesTitle: "New updates",
+    emptyUpdates: "No new updates yet.",
+    updatesCount: (count) => `${count} new`,
+    adminTitle: "Add updates",
+    adminIntro: "Admins can add content to the website. Nothing can be deleted here.",
+    title: "Title",
+    itemTitlePlaceholder: "Example: New server opened",
+    text: "Text",
+    itemTextPlaceholder: "Write what should appear on Home",
+    add: "Add",
+    added: "Update added.",
+    ownerTitle: "Owner Channel",
+    ownerIntro: "The owner can manage administrators and see what happens on the website.",
+    admins: "Administrators",
+    events: "Events",
+    profile: "Your profile",
+    loggedInAs: "Logged in as",
+    role: "Role",
+    backHome: "Back to Home",
+    chooseGame: "Choose a game",
+    chooseGameIntro: "Click a game card on Home to open more information.",
+    liveUpdated: "The page was updated with new content.",
+    accessText: "Choose a game card on Home to open a guide, codex, or search.",
+    invalidEmail: "Enter a valid email address.",
+    writePassword: "Enter a password.",
+    ownerWrong: "Wrong owner password.",
+    adminWrong: "Wrong admin password.",
+    memberShort: "Choose at least 4 characters as member password.",
+    memberWrong: "Wrong member password.",
+    adminAdded: "Administrator added.",
+    adminRemoved: "Administrator removed.",
+    adminExists: "That email is already an administrator.",
+    ownerNoAdmin: "The owner does not need to be added as admin.",
+    adminPasswordNote: "All admin emails log in with Admin//123.",
+    remove: "Remove",
+    roles: { "Medlem": "Member", "Admin": "Admin", "Ägare": "Owner" }
+  }
+};
 
 const views = {
   hem: document.querySelector("#view-hem"),
@@ -532,7 +638,7 @@ document.querySelector("#login-form").addEventListener("submit", async (event) =
   const password = passwordInput.value;
 
   if (!email || !email.includes("@")) {
-    error.textContent = "Skriv en giltig mejladress.";
+    error.textContent = t("invalidEmail");
     return;
   }
 
@@ -547,6 +653,7 @@ document.querySelector("#login-form").addEventListener("submit", async (event) =
     email,
     role
   };
+  saveSession();
 
   addLog(`${currentUser.email} loggade in som ${currentUser.role}.`);
   error.textContent = "";
@@ -560,8 +667,14 @@ document.querySelector("#logout-button").addEventListener("click", () => {
     addLog(`${currentUser.email} loggade ut.`);
   }
   currentUser = null;
+  clearSession();
   document.querySelector("#app-shell").classList.add("hidden");
   document.querySelector("#login-screen").classList.remove("hidden");
+  applyLanguage();
+});
+
+document.querySelectorAll("[data-language]").forEach((button) => {
+  button.addEventListener("click", () => setLanguage(button.dataset.language));
 });
 
 document.querySelector("#add-item-form").addEventListener("submit", (event) => {
@@ -583,7 +696,7 @@ document.querySelector("#add-item-form").addEventListener("submit", (event) => {
   saveState();
   title.value = "";
   text.value = "";
-  message.textContent = "Saken är tillagd.";
+  message.textContent = t("added");
   renderAll();
 });
 
@@ -596,17 +709,17 @@ document.querySelector("#add-admin-form").addEventListener("submit", (event) => 
   const email = normalizeEmail(input.value);
 
   if (!email || !email.includes("@")) {
-    message.textContent = "Skriv en giltig mejladress.";
+    message.textContent = t("invalidEmail");
     return;
   }
 
   if (email === OWNER_EMAIL) {
-    message.textContent = "Ägaren behöver inte läggas till som admin.";
+    message.textContent = t("ownerNoAdmin");
     return;
   }
 
   if (state.admins.includes(email)) {
-    message.textContent = "Den mejlen är redan administratör.";
+    message.textContent = t("adminExists");
     return;
   }
 
@@ -614,7 +727,7 @@ document.querySelector("#add-admin-form").addEventListener("submit", (event) => 
   addLog(`${currentUser.email} lade till ${email} som administratör.`);
   saveState();
   input.value = "";
-  message.textContent = "Administratören är tillagd.";
+  message.textContent = t("adminAdded");
   renderAll();
 });
 
@@ -637,7 +750,13 @@ function loadState() {
 
   try {
     const parsed = JSON.parse(saved);
-    return { ...structuredClone(defaultState), ...parsed, members: parsed.members || {}, updatedAt: parsed.updatedAt || new Date().toISOString() };
+    return {
+      ...structuredClone(defaultState),
+      ...parsed,
+      admins: normalizeEmailList(parsed.admins || defaultState.admins),
+      members: parsed.members || {},
+      updatedAt: parsed.updatedAt || new Date().toISOString()
+    };
   } catch {
     return structuredClone(defaultState);
   }
@@ -655,12 +774,18 @@ function saveState(options = {}) {
 
 function applyIncomingState(nextState) {
   if (!nextState || nextState.updatedAt === lastKnownUpdate) return;
-  state = { ...structuredClone(defaultState), ...nextState, members: nextState.members || {} };
+  state = {
+    ...structuredClone(defaultState),
+    ...nextState,
+    admins: normalizeEmailList(nextState.admins || defaultState.admins),
+    members: nextState.members || {}
+  };
   lastKnownUpdate = state.updatedAt;
   if (currentUser) {
     currentUser.role = getRoleForEmail(currentUser.email);
+    saveSession();
     renderAll();
-    showLiveNotice("Sidan uppdaterades med nytt innehåll.");
+    showLiveNotice(t("liveUpdated"));
   }
 }
 
@@ -682,15 +807,127 @@ function normalizeEmail(email) {
   return email.trim().toLowerCase();
 }
 
+function t(key) {
+  return translations[currentLanguage][key] || translations.sv[key] || key;
+}
+
+function setLanguage(language) {
+  currentLanguage = language === "en" ? "en" : "sv";
+  localStorage.setItem(LANGUAGE_KEY, currentLanguage);
+  applyLanguage();
+  if (currentUser) {
+    renderAll();
+  }
+}
+
+function applyLanguage() {
+  document.documentElement.lang = currentLanguage;
+  document.querySelectorAll("[data-language]").forEach((button) => {
+    button.classList.toggle("active", button.dataset.language === currentLanguage);
+  });
+
+  document.querySelector(".login-panel .eyebrow").textContent = "Spel";
+  document.querySelector("#login-title").textContent = t("loginTitle");
+  document.querySelector(".intro").textContent = t("loginIntro");
+  document.querySelector('label[for="email"]').textContent = t("email");
+  document.querySelector("#email").placeholder = t("emailPlaceholder");
+  document.querySelector('label[for="password"]').textContent = t("password");
+  document.querySelector("#password").placeholder = t("passwordPlaceholder");
+  document.querySelector("#login-form button").textContent = t("loginButton");
+  document.querySelector("#logout-button").textContent = t("logout");
+
+  const homeTitle = document.querySelector("#home-title");
+  if (homeTitle) homeTitle.textContent = t("homeTitle");
+  const homeIntro = document.querySelector(".home-hero p");
+  if (homeIntro) homeIntro.textContent = t("homeIntro");
+  const updatesTitle = document.querySelector("#updates-title");
+  if (updatesTitle) updatesTitle.textContent = t("updatesTitle");
+  const adminTitle = document.querySelector("#admin-title");
+  if (adminTitle) adminTitle.textContent = t("adminTitle");
+  const adminIntro = document.querySelector("#view-admin .page-heading p:last-child");
+  if (adminIntro) adminIntro.textContent = t("adminIntro");
+  const ownerTitle = document.querySelector("#owner-title");
+  if (ownerTitle) ownerTitle.textContent = t("ownerTitle");
+  const ownerEyebrow = document.querySelector("#view-owner .eyebrow");
+  if (ownerEyebrow) ownerEyebrow.textContent = t("ownerTitle");
+  const ownerIntro = document.querySelector("#view-owner .page-heading p:last-child");
+  if (ownerIntro) ownerIntro.textContent = t("ownerIntro");
+  const profileTitle = document.querySelector("#profile-title");
+  if (profileTitle) profileTitle.textContent = t("profile");
+  const profileEyebrow = document.querySelector("#view-profil .eyebrow");
+  if (profileEyebrow) profileEyebrow.textContent = t("nav").profil;
+
+  const itemTitleLabel = document.querySelector('label[for="item-title"]');
+  if (itemTitleLabel) itemTitleLabel.textContent = t("title");
+  const itemTitle = document.querySelector("#item-title");
+  if (itemTitle) itemTitle.placeholder = t("itemTitlePlaceholder");
+  const itemTextLabel = document.querySelector('label[for="item-text"]');
+  if (itemTextLabel) itemTextLabel.textContent = t("text");
+  const itemText = document.querySelector("#item-text");
+  if (itemText) itemText.placeholder = t("itemTextPlaceholder");
+  const addItemButton = document.querySelector("#add-item-form button");
+  if (addItemButton) addItemButton.textContent = t("add");
+  const addAdminButton = document.querySelector("#add-admin-form button");
+  if (addAdminButton) addAdminButton.textContent = t("add");
+  const adminPasswordNote = document.querySelector("#admin-password-note");
+  if (adminPasswordNote) adminPasswordNote.textContent = t("adminPasswordNote");
+
+  const adminHeading = document.querySelector("#view-owner .panel:first-child h2");
+  if (adminHeading) adminHeading.textContent = t("admins");
+  const eventHeading = document.querySelector("#view-owner .panel:last-child h2");
+  if (eventHeading) eventHeading.textContent = t("events");
+  const loggedInAs = document.querySelector(".profile-card .muted");
+  if (loggedInAs) loggedInAs.textContent = t("loggedInAs");
+}
+
+function saveSession() {
+  if (!currentUser) return;
+  localStorage.setItem(SESSION_KEY, JSON.stringify({
+    email: currentUser.email,
+    savedAt: new Date().toISOString()
+  }));
+}
+
+function clearSession() {
+  localStorage.removeItem(SESSION_KEY);
+}
+
+function restoreSession() {
+  const saved = localStorage.getItem(SESSION_KEY);
+  if (!saved) return false;
+
+  try {
+    const session = JSON.parse(saved);
+    if (!session.email) return false;
+    currentUser = {
+      email: normalizeEmail(session.email),
+      role: getRoleForEmail(normalizeEmail(session.email))
+    };
+    showApp();
+    return true;
+  } catch {
+    clearSession();
+    return false;
+  }
+}
+
 function getRoleForEmail(email) {
   if (email === OWNER_EMAIL) return "Ägare";
-  if (state.admins.includes(email)) return "Admin";
+  if (isAdminEmail(email)) return "Admin";
   return "Medlem";
+}
+
+function isAdminEmail(email) {
+  return normalizeEmailList(state.admins).includes(normalizeEmail(email));
+}
+
+function normalizeEmailList(list) {
+  return [...new Set((list || []).map((email) => normalizeEmail(String(email))).filter(Boolean))];
 }
 
 async function validateLogin(email, role, password) {
   if (!password) {
-    return { ok: false, message: "Skriv ett lösenord." };
+    return { ok: false, message: t("writePassword") };
   }
 
   const passwordHash = await hashPassword(password);
@@ -698,18 +935,18 @@ async function validateLogin(email, role, password) {
   if (role === "Ägare") {
     return passwordHash === OWNER_PASSWORD_HASH
       ? { ok: true }
-      : { ok: false, message: "Fel lösenord för ägare." };
+      : { ok: false, message: t("ownerWrong") };
   }
 
   if (role === "Admin") {
     return passwordHash === ADMIN_PASSWORD_HASH
       ? { ok: true }
-      : { ok: false, message: "Fel lösenord för admin." };
+      : { ok: false, message: t("adminWrong") };
   }
 
   if (!state.members[email]) {
     if (password.length < 4) {
-      return { ok: false, message: "Välj minst 4 tecken som medlemslösenord." };
+      return { ok: false, message: t("memberShort") };
     }
     state.members[email] = { passwordHash, createdAt: new Date().toISOString() };
     addLog(`${email} skapade ett medlemskonto.`);
@@ -725,7 +962,7 @@ async function validateLogin(email, role, password) {
 
   return state.members[email].passwordHash === passwordHash
     ? { ok: true }
-    : { ok: false, message: "Fel medlemslösenord." };
+    : { ok: false, message: t("memberWrong") };
 }
 
 async function hashPassword(password) {
@@ -822,6 +1059,7 @@ function isPrime(value) {
 function showApp() {
   document.querySelector("#login-screen").classList.add("hidden");
   document.querySelector("#app-shell").classList.remove("hidden");
+  applyLanguage();
   renderAll();
   navigate("hem");
 }
@@ -846,7 +1084,7 @@ function renderNav() {
       link.href = `#${item.id}`;
       link.className = "nav-link";
       link.dataset.nav = item.id;
-      link.textContent = item.label;
+      link.textContent = t("nav")[item.id] || item.label;
       link.addEventListener("click", (event) => {
         event.preventDefault();
         navigate(item.id);
@@ -861,7 +1099,7 @@ function renderHome() {
   const accessText = document.querySelector("#access-text");
   list.innerHTML = "";
   if (count) count.textContent = `${games.length} spel`;
-  if (accessText) accessText.textContent = "Välj ett spelkort på Hem för att öppna guide, codex eller sök.";
+  if (accessText) accessText.textContent = t("accessText");
 
   games.forEach((game) => {
     const row = document.createElement("li");
@@ -876,13 +1114,14 @@ function renderHome() {
         <span class="game-symbol" aria-hidden="true"></span>
         <h3></h3>
         <p></p>
-        <span class="game-link">Utforska</span>
+        <span class="game-link"></span>
       </div>
     `;
     row.querySelector("img").src = game.image;
     row.querySelector("img").alt = `${game.title} bild`;
     row.querySelector("h3").textContent = game.title;
     row.querySelector("p").textContent = game.text;
+    row.querySelector(".game-link").textContent = t("explore");
     row.querySelector(".game-symbol").textContent = getGameSymbol(game.id);
     row.addEventListener("click", () => showGame(game.id));
     row.addEventListener("keydown", (event) => {
@@ -909,11 +1148,11 @@ function renderUpdates() {
     .slice(0, 8);
 
   updatesList.innerHTML = "";
-  updatesCount.textContent = `${updates.length} nya`;
+  updatesCount.textContent = t("updatesCount")(updates.length);
   updatesSection.classList.toggle("is-empty", updates.length === 0);
 
   if (updates.length === 0) {
-    updatesList.innerHTML = `<li class="empty-update">Inga nya uppdateringar ännu.</li>`;
+    updatesList.innerHTML = `<li class="empty-update">${t("emptyUpdates")}</li>`;
     return;
   }
 
@@ -929,7 +1168,7 @@ function renderUpdates() {
     `;
     row.querySelector("h3").textContent = item.title;
     row.querySelector("p").textContent = item.text;
-    row.querySelector("span").textContent = `Av ${item.author} • ${formatDate(item.createdAt)}`;
+    row.querySelector("span").textContent = `${currentLanguage === "en" ? "By" : "Av"} ${item.author} • ${formatDate(item.createdAt)}`;
     updatesList.append(row);
   });
 }
@@ -948,10 +1187,10 @@ function ensureGameView() {
     view.className = "view";
     view.setAttribute("aria-labelledby", "game-title");
     view.innerHTML = `
-      <button id="back-to-games" class="ghost-button back-button" type="button">Tillbaka till Hem</button>
+      <button id="back-to-games" class="ghost-button back-button" type="button">${t("backHome")}</button>
       <article id="game-detail" class="panel game-detail">
-        <h2 id="game-title">Välj ett spel</h2>
-        <p class="muted">Klicka på ett spelkort på Hem för att öppna mer information.</p>
+        <h2 id="game-title">${t("chooseGame")}</h2>
+        <p class="muted">${t("chooseGameIntro")}</p>
       </article>
     `;
     document.querySelector(".content-shell").append(view);
@@ -1271,7 +1510,7 @@ function normalizeText(value) {
 
 function renderProfile() {
   document.querySelector("#profile-email").textContent = currentUser.email;
-  document.querySelector("#profile-role").textContent = `Roll: ${currentUser.role}`;
+  document.querySelector("#profile-role").textContent = `${t("role")}: ${t("roles")[currentUser.role] || currentUser.role}`;
   document.querySelector("#profile-avatar").textContent = currentUser.role.charAt(0);
 }
 
@@ -1295,7 +1534,7 @@ function renderOwner() {
     const removeButton = document.createElement("button");
     removeButton.type = "button";
     removeButton.className = "danger-button";
-    removeButton.textContent = "Ta bort";
+    removeButton.textContent = t("remove");
     removeButton.addEventListener("click", () => removeAdmin(email));
 
     row.append(emailText, removeButton);
@@ -1317,7 +1556,7 @@ function removeAdmin(email) {
   state.admins = state.admins.filter((adminEmail) => adminEmail !== email);
   addLog(`${currentUser.email} tog bort ${email} som administratör.`);
   saveState();
-  document.querySelector("#owner-message").textContent = "Administratören är borttagen.";
+  document.querySelector("#owner-message").textContent = t("adminRemoved");
   renderAll();
 }
 
@@ -1343,14 +1582,20 @@ function canAccess(id) {
 
 function getAccessText() {
   if (currentUser.role === "Ägare") {
-    return "Du kan se Hem, Adminkonsolen, Ägarkanalen och Profil.";
+    return currentLanguage === "en"
+      ? "You can see Home, Admin Console, Owner Channel, and Profile."
+      : "Du kan se Hem, Adminkonsolen, Ägarkanalen och Profil.";
   }
 
   if (currentUser.role === "Admin") {
-    return "Du kan se Hem, Adminkonsolen och Profil.";
+    return currentLanguage === "en"
+      ? "You can see Home, Admin Console, and Profile."
+      : "Du kan se Hem, Adminkonsolen och Profil.";
   }
 
-  return "Du kan se Hem och Profil.";
+  return currentLanguage === "en"
+    ? "You can see Home and Profile."
+    : "Du kan se Hem och Profil.";
 }
 
 function addLog(text) {
@@ -1363,8 +1608,11 @@ function addLog(text) {
 }
 
 function formatDate(value) {
-  return new Intl.DateTimeFormat("sv-SE", {
+  return new Intl.DateTimeFormat(currentLanguage === "en" ? "en-US" : "sv-SE", {
     dateStyle: "short",
     timeStyle: "short"
   }).format(new Date(value));
 }
+
+applyLanguage();
+restoreSession();
