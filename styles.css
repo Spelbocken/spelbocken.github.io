@@ -146,6 +146,13 @@ label {
   font-weight: 700;
 }
 
+.helper-text {
+  margin: -4px 0 14px;
+  color: var(--muted);
+  font-size: 0.94rem;
+  line-height: 1.45;
+}
+
 .app-shell {
   min-height: 100vh;
 }
@@ -188,6 +195,34 @@ label {
   flex: 1;
   gap: 8px;
   overflow-x: auto;
+}
+
+.language-switch {
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.03);
+  padding: 3px;
+}
+
+.login-language {
+  margin-top: 18px;
+}
+
+.language-button {
+  min-height: 30px;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--muted);
+  padding: 0 10px;
+  font-size: 0.84rem;
+}
+
+.language-button:hover,
+.language-button.active {
+  background: #8b48ff;
+  color: #fff;
 }
 
 .nav-link,
