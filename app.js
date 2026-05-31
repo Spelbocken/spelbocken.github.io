@@ -719,12 +719,14 @@ document.querySelector("#add-admin-form").addEventListener("submit", (event) => 
     return;
   }
 
-  if (state.admins.includes(email)) {
+  state.admins = normalizeEmailList([...state.admins, ...DEFAULT_ADMINS]);
+
+  if (isAdminEmail(email)) {
     message.textContent = t("adminExists");
     return;
   }
 
-  state.admins.push(email);
+  state.admins = normalizeEmailList([...state.admins, email]);
   addLog(`${currentUser.email} lade till ${email} som administratör.`);
   saveState();
   input.value = "";
@@ -919,7 +921,8 @@ function getRoleForEmail(email) {
 }
 
 function isAdminEmail(email) {
-  return normalizeEmailList(state.admins).includes(normalizeEmail(email));
+  const admins = normalizeEmailList([...(state.admins || []), ...DEFAULT_ADMINS]);
+  return admins.includes(normalizeEmail(email));
 }
 
 function normalizeEmailList(list) {
@@ -1517,6 +1520,8 @@ function renderProfile() {
 
 function renderOwner() {
   if (!currentUser || currentUser.role !== "Ägare") return;
+
+  state.admins = normalizeEmailList([...state.admins, ...DEFAULT_ADMINS]);
 
   const adminList = document.querySelector("#admin-list");
   const logList = document.querySelector("#activity-log");
