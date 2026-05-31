@@ -367,6 +367,50 @@ label {
   overflow-wrap: anywhere;
 }
 
+.owner-users-panel {
+  grid-column: 1 / -1;
+}
+
+.user-role-list {
+  display: grid;
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.user-role-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(160px, auto);
+  gap: 14px;
+  align-items: center;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface-2);
+  padding: 14px;
+}
+
+.user-role-row strong {
+  overflow-wrap: anywhere;
+}
+
+.user-role-row p {
+  margin: 6px 0 0;
+  color: var(--muted);
+  line-height: 1.45;
+}
+
+.user-role-row label {
+  display: grid;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.user-role-row select {
+  min-width: 150px;
+}
+
 .danger-button {
   background: rgba(255, 94, 94, 0.12);
   color: #ff9c96;
@@ -992,6 +1036,7 @@ label {
 
   .inline-form,
   .admin-row,
+  .user-role-row,
   .profile-card {
     display: grid;
     grid-template-columns: 1fr;
