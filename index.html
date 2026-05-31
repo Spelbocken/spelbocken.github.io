@@ -39,26 +39,20 @@
 
       <main class="content-shell">
         <section id="view-hem" class="view active" aria-labelledby="home-title">
-          <div class="page-heading">
-            <p class="eyebrow">Hem</p>
-            <h1 id="home-title">Välkommen till Spel</h1>
-            <p>Här ser du det som finns på hemsidan och vad som lagts till av administratörer och ägare.</p>
+          <div class="home-hero">
+            <h1 id="home-title">SPEL</h1>
+            <p>Din ultimata guide till dina favoritspel</p>
           </div>
 
-          <div class="dashboard-grid">
-            <article class="panel">
-              <div class="panel-header">
-                <h2>Nyheter</h2>
-                <span id="item-count" class="pill">0 saker</span>
-              </div>
-              <ul id="public-items" class="item-list"></ul>
-            </article>
+          <ul id="public-items" class="home-game-grid"></ul>
 
-            <article class="panel compact-panel">
-              <h2>Din åtkomst</h2>
-              <p id="access-text"></p>
-            </article>
-          </div>
+          <section id="updates-section" class="home-updates" aria-labelledby="updates-title">
+            <div class="updates-heading">
+              <h2 id="updates-title">Nya uppdateringar</h2>
+              <span id="updates-count" class="pill">0 nya</span>
+            </div>
+            <ul id="updates-list" class="updates-list"></ul>
+          </section>
         </section>
 
         <section id="view-admin" class="view" aria-labelledby="admin-title">
