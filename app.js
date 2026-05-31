@@ -2,11 +2,12 @@ const OWNER_EMAIL = "patrik.ahlen05@gmail.com";
 const STORAGE_KEY = "spel-state-v3";
 const SESSION_KEY = "spel-session-v1";
 const LANGUAGE_KEY = "spel-language-v1";
+const DEFAULT_ADMINS = ["admin@spel.se", "jjarl655@gmail.com"];
 const ADMIN_PASSWORD_HASH = "257878632a1acffaa80a54905df09608319866e34c63098f5dd960deedaa12bb";
 const OWNER_PASSWORD_HASH = "9ed08ae94ed8cf876be0489086de7169f684cfbd3de1a3c136a4bae5aab20e5e";
 
 const defaultState = {
-  admins: ["admin@spel.se"],
+  admins: DEFAULT_ADMINS,
   members: {},
   items: [
     {
@@ -753,7 +754,7 @@ function loadState() {
     return {
       ...structuredClone(defaultState),
       ...parsed,
-      admins: normalizeEmailList(parsed.admins || defaultState.admins),
+      admins: normalizeEmailList([...(parsed.admins || []), ...DEFAULT_ADMINS]),
       members: parsed.members || {},
       updatedAt: parsed.updatedAt || new Date().toISOString()
     };
@@ -777,7 +778,7 @@ function applyIncomingState(nextState) {
   state = {
     ...structuredClone(defaultState),
     ...nextState,
-    admins: normalizeEmailList(nextState.admins || defaultState.admins),
+    admins: normalizeEmailList([...(nextState.admins || []), ...DEFAULT_ADMINS]),
     members: nextState.members || {}
   };
   lastKnownUpdate = state.updatedAt;
