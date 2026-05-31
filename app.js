@@ -3,6 +3,7 @@ const STORAGE_KEY = "spel-state-v3";
 const SESSION_KEY = "spel-session-v1";
 const LANGUAGE_KEY = "spel-language-v1";
 const DEFAULT_ADMINS = ["admin@spel.se", "jjarl655@gmail.com"];
+const GITHUB_REPO_COMMITS_URL = "https://api.github.com/repos/Spelbocken/spelbocken.github.io/commits?per_page=1";
 const ADMIN_PASSWORD_HASH = "257878632a1acffaa80a54905df09608319866e34c63098f5dd960deedaa12bb";
 const OWNER_PASSWORD_HASH = "9ed08ae94ed8cf876be0489086de7169f684cfbd3de1a3c136a4bae5aab20e5e";
 
@@ -38,6 +39,7 @@ let state = loadState();
 let currentUser = null;
 let lastKnownUpdate = state.updatedAt;
 let currentLanguage = localStorage.getItem(LANGUAGE_KEY) || "sv";
+let githubUpdate = null;
 const liveChannel = "BroadcastChannel" in window ? new BroadcastChannel("spel-live-updates") : null;
 
 const translations = {
@@ -840,6 +842,9 @@ function t(key) {
 function setLanguage(language) {
   currentLanguage = language === "en" ? "en" : "sv";
   localStorage.setItem(LANGUAGE_KEY, currentLanguage);
+  if (githubUpdate) {
+    githubUpdate.title = currentLanguage === "en" ? "Website updated on GitHub" : "Hemsidan uppdaterad på GitHub";
+  }
   applyLanguage();
   if (currentUser) {
     renderAll();
@@ -1189,9 +1194,11 @@ function renderUpdates() {
   const updatesSection = document.querySelector("#updates-section");
   if (!updatesList || !updatesCount || !updatesSection) return;
 
-  const updates = state.items
+  const githubUpdates = githubUpdate ? [githubUpdate] : [];
+  const adminUpdates = state.items
     .filter((item) => item.author && item.author !== "system")
     .slice(0, 8);
+  const updates = [...githubUpdates, ...adminUpdates].slice(0, 8);
 
   updatesList.innerHTML = "";
   updatesCount.textContent = t("updatesCount")(updates.length);
@@ -1223,6 +1230,28 @@ function getGameSymbol(id) {
   if (id === "hunter") return "⌁";
   if (id === "phasmophobia") return "♟";
   return "⌬";
+}
+
+async function loadGithubUpdate() {
+  try {
+    const response = await fetch(GITHUB_REPO_COMMITS_URL, {
+      headers: { Accept: "application/vnd.github+json" }
+    });
+    if (!response.ok) return;
+    const commits = await response.json();
+    const latest = commits[0];
+    if (!latest || !latest.commit) return;
+    const message = latest.commit.message.split("\n")[0] || "Uppdaterad hemsida";
+    githubUpdate = {
+      title: currentLanguage === "en" ? "Website updated on GitHub" : "Hemsidan uppdaterad på GitHub",
+      text: message,
+      author: "GitHub",
+      createdAt: latest.commit.committer?.date || new Date().toISOString()
+    };
+    if (currentUser) renderUpdates();
+  } catch {
+    githubUpdate = null;
+  }
 }
 
 function ensureGameView() {
@@ -1762,3 +1791,4 @@ function formatDate(value) {
 
 applyLanguage();
 restoreSession();
+loadGithubUpdate();
