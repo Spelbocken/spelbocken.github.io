@@ -26,11 +26,14 @@ const defaultState = {
       createdAt: new Date().toISOString()
     }
   ],
-  logs: []
+  logs: [],
+  updatedAt: new Date().toISOString()
 };
 
 let state = loadState();
 let currentUser = null;
+let lastKnownUpdate = state.updatedAt;
+const liveChannel = "BroadcastChannel" in window ? new BroadcastChannel("spel-live-updates") : null;
 
 const views = {
   hem: document.querySelector("#view-hem"),
@@ -49,6 +52,13 @@ const navItems = [
 
 const games = [
   {
+    id: "hunter",
+    title: "theHunter: Call of the Wild",
+    image: "assets/thehunter.svg",
+    tag: "Kartor, djur och sök",
+    text: "Sök på karta eller djur och se var djuren finns, class och level."
+  },
+  {
     id: "phasmophobia",
     title: "Phasmophobia",
     image: "assets/phasmophobia.svg",
@@ -61,52 +71,55 @@ const games = [
     image: "assets/satisfactory.svg",
     tag: "Codex och Calculator",
     text: "Bläddra bland Items, Buildings, Schematics och planera enkel produktion."
-  },
-  {
-    id: "hunter",
-    title: "theHunter: Call of the Wild",
-    image: "assets/thehunter.svg",
-    tag: "Kartor, djur och sök",
-    text: "Sök på karta eller djur och se var djuren finns, class och level."
   }
 ];
 
 const evidence = [
-  { name: "EMF 5", text: "EMF-läsaren går upp till nivå 5 när spöket lämnar stark paranormal aktivitet." },
-  { name: "Orb", text: "Ghost Orbs syns som små ljusprickar i videokamera, oftast i spökets favoritrum." },
+  { name: "EMF Level 5", text: "EMF-läsaren går upp till nivå 5 när spöket lämnar stark paranormal aktivitet." },
+  { name: "Ghost Orb", text: "Ghost Orbs syns som små ljusprickar i videokamera, oftast i spökets favoritrum." },
   { name: "Spirit Box", text: "Spöket kan svara med röst när du använder Spirit Box och ställer frågor." },
-  { name: "Freezing", text: "Temperaturen sjunker till frysgrader. Synlig andedräkt kan hjälpa, men termometern är säkrast." },
+  { name: "Freezing Temperatures", text: "Temperaturen sjunker till frysgrader. Synlig andedräkt kan hjälpa, men termometern är säkrast." },
   { name: "Ultraviolet", text: "Fingeravtryck, handavtryck eller fotspår kan synas med UV-lampa eller glowstick." },
-  { name: "Writing", text: "Spöket kan skriva i Ghost Writing Book när boken ligger i rätt område." },
-  { name: "D.O.T.S", text: "D.O.T.S-projektorn kan visa spökets siluett när det passerar igenom ljuset." }
+  { name: "Ghost Writing", text: "Spöket kan skriva i Ghost Writing Book när boken ligger i rätt område." },
+  { name: "D.O.T.S Projector", text: "D.O.T.S-projektorn kan visa spökets siluett när det passerar igenom ljuset." }
 ];
 
 const ghosts = [
-  ["Spirit", "EMF 5, Spirit Box, Writing", "En klassisk spöktyp utan specialbevis, men kan stoppas länge med smudge."],
-  ["Wraith", "EMF 5, Spirit Box, D.O.T.S", "Kan teleportera till spelare och lämnar normalt inga UV-fotspår i salt."],
-  ["Phantom", "Spirit Box, Ultraviolet, D.O.T.S", "Försvinner från foto och gör spelare mer stressade när man tittar på det."],
-  ["Poltergeist", "Spirit Box, Ultraviolet, Writing", "Kastar ofta föremål och kan skapa mycket rörelse i ett rum med många saker."],
-  ["Banshee", "Orb, Ultraviolet, D.O.T.S", "Fokuserar ofta på en spelare och kan göra speciella skrik i parabolic microphone."],
-  ["Jinn", "EMF 5, Ultraviolet, Freezing", "Blir snabbare när strömmen är på och spelaren är långt bort."],
-  ["Mare", "Spirit Box, Orb, Writing", "Trivs i mörker och kan oftare släcka lampor."],
-  ["Revenant", "Orb, Freezing, Writing", "Väldigt snabb när den jagar och ser en spelare, men långsam när den inte vet var du är."],
-  ["Shade", "EMF 5, Freezing, Writing", "Blyg spöktyp som ofta gör mindre aktivitet när flera spelare är nära."],
-  ["Demon", "Ultraviolet, Freezing, Writing", "Kan jaga tidigt och ofta. Crucifix är extra viktigt."],
-  ["Yurei", "Orb, Freezing, D.O.T.S", "Kan påverka sanity hårt och stänga dörrar på ett tydligt sätt."],
-  ["Oni", "EMF 5, Freezing, D.O.T.S", "Aktiv och syns ofta tydligt under jakt, men gör inte ghost airball-event."],
-  ["Yokai", "Spirit Box, Orb, D.O.T.S", "Reagerar mer på prat nära sig och hör sämre under jakt."],
-  ["Hantu", "Orb, Ultraviolet, Freezing", "Snabbare i kalla rum och långsammare i varma rum."],
-  ["Goryo", "EMF 5, Ultraviolet, D.O.T.S", "D.O.T.S syns bara via kamera när ingen är i rummet."],
-  ["Myling", "EMF 5, Ultraviolet, Writing", "Tystare steg under jakt, men hörs tydligt i parabolic microphone."],
-  ["Onryo", "Spirit Box, Orb, Freezing", "Ljus kan fungera som skydd, men släckta lågor kan också trigga jakt."],
-  ["The Twins", "EMF 5, Spirit Box, Freezing", "Kan göra aktivitet på två olika platser och jaga med olika hastighet."],
-  ["Raiju", "EMF 5, Orb, D.O.T.S", "Blir snabbare nära elektronisk utrustning."],
-  ["Obake", "EMF 5, Ultraviolet, Orb", "Kan lämna ovanliga UV-avtryck och byta form snabbt under jakt."],
-  ["The Mimic", "Spirit Box, Ultraviolet, Freezing + falsk Orb", "Härmar andra spöken och visar alltid Ghost Orb som extra falskt bevis."],
-  ["Moroi", "Spirit Box, Writing, Freezing", "Blir snabbare när sanity är låg och kan förbanna spelare via ljud/bevis."],
-  ["Deogen", "Spirit Box, Writing, D.O.T.S", "Vet alltid var spelare är under jakt, men blir mycket långsam nära sitt mål."],
-  ["Thaye", "Orb, Writing, D.O.T.S", "Är farlig tidigt men åldras och blir långsammare över tid."]
-].map(([name, proof, info]) => ({ name, proof, info }));
+  ["Spirit", ["EMF Level 5", "Spirit Box", "Ghost Writing"], "En av de vanligaste spökena. Inget särskilt speciellt med dem, men de kan vara svåra att identifiera.", "Inga speciella styrkor.", "Rökelse stoppar Spirit från att jaga längre tid än vanliga spöken.", "Normal (1.7 m/s)", "50%", "Inga unika förmågor.", "Om rökelse verkar hålla den lugn ovanligt länge är det troligen en Spirit."],
+  ["Wraith", ["EMF Level 5", "Spirit Box", "D.O.T.S Projector"], "Ett spöke som kan teleportera till spelare och är knepigt att spåra.", "Kan teleportera till en spelare och ge EMF vid platsen.", "Lämnar inte UV-fotspår efter salt.", "Normal (1.7 m/s)", "50%", "Teleport till spelare.", "Lägg salt. Om spöket trampar men inte lämnar fotspår är Wraith stark kandidat."],
+  ["Phantom", ["Spirit Box", "Ultraviolet", "D.O.T.S Projector"], "Ett spöke som påverkar sanity när man tittar på det och kan vara svårt att se under jakt.", "Sänker sanity snabbare när du tittar på det.", "Försvinner från ghost photo.", "Normal (1.7 m/s)", "50%", "Blinkar långsammare under jakt.", "Ta foto vid event. Försvinner spöket men fotot räknas kan det vara Phantom."],
+  ["Poltergeist", ["Spirit Box", "Ultraviolet", "Ghost Writing"], "Ett högljutt spöke som älskar att kasta saker.", "Kan kasta många föremål på en gång.", "Svagare i rum utan föremål.", "Normal (1.7 m/s)", "50%", "Masskast av föremål.", "Samla saker i rummet och se om flera kastas samtidigt."],
+  ["Banshee", ["Ultraviolet", "Ghost Orb", "D.O.T.S Projector"], "Ett spöke som riktar in sig på en spelare åt gången.", "Fokuserar på ett mål.", "Kan ge särskilt skrik i parabolic microphone.", "Normal (1.7 m/s)", "50%", "Jagar sitt mål om målet är inne.", "Lyssna med parabolic microphone och testa om samma spelare alltid blir jagad."],
+  ["Jinn", ["EMF Level 5", "Ultraviolet", "Freezing Temperatures"], "Ett territoriellt spöke som blir farligare när säkringen är på.", "Kan bli snabbare långt från spelare när strömmen är på.", "Kan inte använda styrkan om säkringen är av.", "Normal, snabbare med förmåga", "50%", "Dränerar sanity vid säkringen.", "Stäng av säkringen om du misstänker Jinn."],
+  ["Mare", ["Spirit Box", "Ghost Orb", "Ghost Writing"], "Ett spöke som trivs i mörker.", "Kan jaga tidigare i mörker.", "Jagar senare när lamporna är tända.", "Normal (1.7 m/s)", "60% i mörker, 40% med ljus", "Kan släcka lampor ofta.", "Om den ofta släcker lampor och vägrar tända dem kan det vara Mare."],
+  ["Revenant", ["Ghost Orb", "Ghost Writing", "Freezing Temperatures"], "Ett långsamt spöke tills det ser en spelare.", "Extremt snabb när den jagar ett synligt mål.", "Mycket långsam när den inte vet var spelare är.", "Långsam utan mål, mycket snabb med mål", "50%", "Stor hastighetsskillnad under jakt.", "Göm dig och lyssna på stegen. Revenant blir tydligt långsam utan synkontakt."],
+  ["Shade", ["EMF Level 5", "Ghost Writing", "Freezing Temperatures"], "Ett blygt spöke som ofta gör lite aktivitet.", "Svårt att få aktivitet när spelare är nära.", "Kan inte jaga om en spelare är i samma rum.", "Normal (1.7 m/s)", "35%", "Låg aktivitet nära gruppen.", "Om den är ovanligt blyg och jagar sent kan det vara Shade."],
+  ["Demon", ["Ultraviolet", "Ghost Writing", "Freezing Temperatures"], "Ett aggressivt spöke som kan jaga väldigt tidigt.", "Kan starta jakt vid hög sanity.", "Crucifix fungerar på längre avstånd.", "Normal (1.7 m/s)", "70%, kan jaga tidigare med förmåga", "Kortare väntetid mellan jakter.", "Placera crucifix tidigt. Tidiga jakter pekar ofta mot Demon."],
+  ["Yurei", ["Ghost Orb", "Freezing Temperatures", "D.O.T.S Projector"], "Ett spöke som påverkar sanity och dörrar.", "Kan dränera sanity med dörrförmåga.", "Rökelse kan låsa den i rummet en stund.", "Normal (1.7 m/s)", "50%", "Stänger dörrar hårt och kan sänka sanity.", "Lyssna efter tydliga dörrslag och följ sanity."],
+  ["Oni", ["EMF Level 5", "Freezing Temperatures", "D.O.T.S Projector"], "Ett aktivt och tydligt spöke.", "Mer aktivt när spelare är nära och syns mer under jakt.", "Gör inte ghost mist/airball-event.", "Normal (1.7 m/s)", "50%", "Blinkar synligare under jakt.", "Mycket aktivitet och tydlig synlighet under jakt pekar mot Oni."],
+  ["Yokai", ["Spirit Box", "Ghost Orb", "D.O.T.S Projector"], "Ett spöke som reagerar på prat.", "Kan jaga tidigare när spelare pratar nära.", "Hör sämre under jakt.", "Normal (1.7 m/s)", "50%, 80% vid prat nära", "Triggad av röster.", "Testa ljud/röst nära rummet och om den tappar bort spelare lätt under jakt."],
+  ["Hantu", ["Ultraviolet", "Ghost Orb", "Freezing Temperatures"], "Ett kölddrivet spöke.", "Snabbare i kalla rum.", "Långsammare i varma rum och accelererar inte med synkontakt.", "1.4 m/s varmt till 2.7 m/s kallt", "50%", "Andedräkt syns under jakt om säkringen är av.", "Stäng av säkringen och jämför hastigheten i kalla/varma områden."],
+  ["Goryo", ["EMF Level 5", "Ultraviolet", "D.O.T.S Projector"], "Ett spöke som ofta håller sig nära sitt rum.", "D.O.T.S syns bara via kamera när ingen är i rummet.", "Vandrar mindre långt från favoritrum.", "Normal (1.7 m/s)", "50%", "Kamerabunden D.O.T.S.", "Ställ kamera på D.O.T.S och lämna rummet."],
+  ["Myling", ["EMF Level 5", "Ultraviolet", "Ghost Writing"], "Ett tystare spöke under jakt.", "Gör mer ljud i parabolic microphone.", "Steg hörs på kortare avstånd under jakt.", "Normal (1.7 m/s)", "50%", "Tystare jaktsteg.", "Om elektroniken stör innan du hör steg kan det vara Myling."],
+  ["Onryo", ["Spirit Box", "Ghost Orb", "Freezing Temperatures"], "Ett spöke kopplat till eld och lågor.", "Kan jaga efter att lågor slocknar.", "Tända lågor kan fungera som skydd.", "Normal (1.7 m/s)", "60%", "Tredje släckta lågan kan trigga jakt.", "Testa ljus försiktigt och ha crucifix redo."],
+  ["The Twins", ["EMF Level 5", "Spirit Box", "Freezing Temperatures"], "Två-liknande aktivitet från olika platser.", "Kan interagera långt ifrån huvudspöket.", "Olika jaktstarter kan ge olika hastighet.", "Lite långsammare eller snabbare variant", "50%", "Två aktivitetsplatser.", "Om aktivitet sker i två områden nära samtidigt kan det vara Twins."],
+  ["Raiju", ["EMF Level 5", "Ghost Orb", "D.O.T.S Projector"], "Ett spöke som använder elektronik för hastighet.", "Blir snabbare nära aktiv elektronik.", "Stör elektronik på längre avstånd under jakt.", "Normal, 2.5 m/s nära elektronik", "50%, 65% nära elektronik", "Elektronikboost.", "Stäng av utrustning i jaktvägar och lyssna på hastigheten."],
+  ["Obake", ["EMF Level 5", "Ultraviolet", "Ghost Orb"], "Ett spöke som kan lämna ovanliga avtryck.", "Kan lämna special-UV, till exempel sex fingrar.", "Kan ibland inte lämna UV trots interaktion.", "Normal (1.7 m/s)", "50%", "Kan byta modell kort under jakt.", "Kolla UV-avtryck noga. Sex fingrar är starkt Obake-tecken."],
+  ["The Mimic", ["Spirit Box", "Ultraviolet", "Freezing Temperatures"], "Ett spöke som härmar andra spöken.", "Kan härma nästan alla andra spökens beteenden.", "Visar alltid falsk Ghost Orb utöver sina riktiga bevis.", "Beror på vad den härmar", "Beror på vad den härmar", "Fake Ghost Orb.", "Om du får Orb plus Spirit Box, UV och Freezing är The Mimic mycket troligt."],
+  ["Moroi", ["Spirit Box", "Ghost Writing", "Freezing Temperatures"], "Ett spöke som blir farligare vid låg sanity.", "Blir snabbare ju lägre sanity laget har.", "Rökelse stoppar den längre under jakt.", "1.5 till 2.25 m/s beroende på sanity", "50%", "Kan förbanna spelare via Spirit Box/parabolic.", "Om hastigheten ökar kraftigt sent i rundan, misstänk Moroi."],
+  ["Deogen", ["Spirit Box", "Ghost Writing", "D.O.T.S Projector"], "Ett spöke som alltid vet var du är.", "Hittar alltid spelare under jakt.", "Blir extremt långsam nära spelaren.", "3.0 m/s långt bort, 0.4 m/s nära", "40%", "Särskild Spirit Box-andning på nära håll.", "Göm dig inte. Loopa den försiktigt när du vet att det är Deogen."],
+  ["Thaye", ["Ghost Orb", "Ghost Writing", "D.O.T.S Projector"], "Ett spöke som börjar starkt men åldras över tid.", "Mycket aggressiv och snabb i början.", "Blir långsammare och jagar senare när den åldras.", "2.75 m/s ung till 1.0 m/s gammal", "75% ung till 15% gammal", "Åldras när spelare är nära.", "Tidiga snabba jakter som blir lugnare över tid pekar mot Thaye."]
+].map(([name, evidenceList, description, strength, weakness, speed, sanity, ability, tips]) => ({
+  name,
+  evidence: evidenceList,
+  description,
+  strength,
+  weakness,
+  speed,
+  sanity,
+  ability,
+  tips
+}));
 
 const satisfactoryItems = `Adaptive Control Unit
 AI Expansion Server
@@ -605,20 +618,64 @@ document.querySelector("#add-admin-form").addEventListener("submit", (event) => 
   renderAll();
 });
 
+window.addEventListener("storage", (event) => {
+  if (event.key !== STORAGE_KEY || !event.newValue) return;
+  applyIncomingState(JSON.parse(event.newValue));
+});
+
+if (liveChannel) {
+  liveChannel.addEventListener("message", (event) => {
+    if (event.data && event.data.type === "state-updated") {
+      applyIncomingState(loadState());
+    }
+  });
+}
+
 function loadState() {
   const saved = localStorage.getItem(STORAGE_KEY);
   if (!saved) return structuredClone(defaultState);
 
   try {
     const parsed = JSON.parse(saved);
-    return { ...structuredClone(defaultState), ...parsed, members: parsed.members || {} };
+    return { ...structuredClone(defaultState), ...parsed, members: parsed.members || {}, updatedAt: parsed.updatedAt || new Date().toISOString() };
   } catch {
     return structuredClone(defaultState);
   }
 }
 
-function saveState() {
+function saveState(options = {}) {
+  const shouldBroadcast = options.broadcast !== false;
+  state.updatedAt = new Date().toISOString();
+  lastKnownUpdate = state.updatedAt;
   localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  if (shouldBroadcast && liveChannel) {
+    liveChannel.postMessage({ type: "state-updated", updatedAt: state.updatedAt });
+  }
+}
+
+function applyIncomingState(nextState) {
+  if (!nextState || nextState.updatedAt === lastKnownUpdate) return;
+  state = { ...structuredClone(defaultState), ...nextState, members: nextState.members || {} };
+  lastKnownUpdate = state.updatedAt;
+  if (currentUser) {
+    currentUser.role = getRoleForEmail(currentUser.email);
+    renderAll();
+    showLiveNotice("Sidan uppdaterades med nytt innehåll.");
+  }
+}
+
+function showLiveNotice(text) {
+  let notice = document.querySelector("#live-notice");
+  if (!notice) {
+    notice = document.createElement("div");
+    notice.id = "live-notice";
+    notice.className = "live-notice";
+    document.querySelector("#app-shell").append(notice);
+  }
+  notice.textContent = text;
+  notice.classList.add("visible");
+  window.clearTimeout(showLiveNotice.timer);
+  showLiveNotice.timer = window.setTimeout(() => notice.classList.remove("visible"), 3200);
 }
 
 function normalizeEmail(email) {
@@ -803,29 +860,84 @@ function renderHome() {
   const count = document.querySelector("#item-count");
   const accessText = document.querySelector("#access-text");
   list.innerHTML = "";
-  count.textContent = `${games.length} spel`;
-  accessText.textContent = "Välj ett spelkort på Hem för att öppna guide, codex eller sök.";
+  if (count) count.textContent = `${games.length} spel`;
+  if (accessText) accessText.textContent = "Välj ett spelkort på Hem för att öppna guide, codex eller sök.";
 
   games.forEach((game) => {
     const row = document.createElement("li");
-    row.className = "item-card game-card";
+    row.className = `game-card game-card-${game.id}`;
+    row.tabIndex = 0;
+    row.setAttribute("role", "button");
+    row.setAttribute("aria-label", `Öppna ${game.title}`);
     row.innerHTML = `
       <img class="game-cover" src="" alt="" loading="lazy" />
-      <h3></h3>
-      <p></p>
-      <div class="item-meta"></div>
-      <button type="button">Öppna</button>
+      <div class="game-overlay"></div>
+      <div class="game-card-content">
+        <span class="game-symbol" aria-hidden="true"></span>
+        <h3></h3>
+        <p></p>
+        <span class="game-link">Utforska</span>
+      </div>
     `;
     row.querySelector("img").src = game.image;
     row.querySelector("img").alt = `${game.title} bild`;
     row.querySelector("h3").textContent = game.title;
     row.querySelector("p").textContent = game.text;
-    row.querySelector(".item-meta").textContent = game.tag;
-    row.querySelector("button").addEventListener("click", () => showGame(game.id));
+    row.querySelector(".game-symbol").textContent = getGameSymbol(game.id);
+    row.addEventListener("click", () => showGame(game.id));
+    row.addEventListener("keydown", (event) => {
+      if (event.key === "Enter" || event.key === " ") {
+        event.preventDefault();
+        showGame(game.id);
+      }
+    });
     list.append(row);
   });
 
+  renderUpdates();
   ensureGameView();
+}
+
+function renderUpdates() {
+  const updatesList = document.querySelector("#updates-list");
+  const updatesCount = document.querySelector("#updates-count");
+  const updatesSection = document.querySelector("#updates-section");
+  if (!updatesList || !updatesCount || !updatesSection) return;
+
+  const updates = state.items
+    .filter((item) => item.author && item.author !== "system")
+    .slice(0, 8);
+
+  updatesList.innerHTML = "";
+  updatesCount.textContent = `${updates.length} nya`;
+  updatesSection.classList.toggle("is-empty", updates.length === 0);
+
+  if (updates.length === 0) {
+    updatesList.innerHTML = `<li class="empty-update">Inga nya uppdateringar ännu.</li>`;
+    return;
+  }
+
+  updates.forEach((item) => {
+    const row = document.createElement("li");
+    row.className = "update-card";
+    row.innerHTML = `
+      <div>
+        <h3></h3>
+        <p></p>
+      </div>
+      <span></span>
+    `;
+    row.querySelector("h3").textContent = item.title;
+    row.querySelector("p").textContent = item.text;
+    row.querySelector("span").textContent = `Av ${item.author} • ${formatDate(item.createdAt)}`;
+    updatesList.append(row);
+  });
+}
+
+function getGameSymbol(id) {
+  if (id === "hunter") return "⌁";
+  if (id === "phasmophobia") return "♟";
+  return "⌬";
 }
 
 function ensureGameView() {
@@ -856,6 +968,10 @@ function showGame(id) {
   if (id === "satisfactory") detail.innerHTML = renderSatisfactory();
   if (id === "hunter") detail.innerHTML = renderHunter();
 
+  if (id === "phasmophobia") {
+    attachPhasmophobiaHandlers();
+  }
+
   const hunterSearch = document.querySelector("#hunter-search");
   if (hunterSearch) {
     hunterSearch.addEventListener("input", renderHunterSearch);
@@ -872,39 +988,153 @@ function showGame(id) {
 
 function renderPhasmophobia() {
   return `
-    <div class="detail-heading">
+    <div class="phasmo-shell">
+    <div class="detail-heading phasmo-heading">
       <div>
         <p class="eyebrow">Phasmophobia</p>
-        <h2>Spöken och bevis</h2>
+        <h2>Alla spöken</h2>
+        <p class="muted">Tryck på ett spöke för att läsa bevis, styrkor, svagheter, hastighet och tips.</p>
       </div>
       <span class="pill">${ghosts.length} spöken</span>
     </div>
-    <div class="split-grid">
-      <section>
-        <h3>Alla spöken</h3>
-        <div class="info-grid">
+    <div class="split-grid phasmo-overview">
+      <section class="phasmo-section">
+        <h3>Spöken</h3>
+        <div class="ghost-grid">
           ${ghosts.map((ghost) => `
-            <article class="mini-card">
+            <button class="ghost-list-card" type="button" data-ghost="${ghost.name}">
+              <span class="ghost-icon">♟</span>
               <h4>${ghost.name}</h4>
-              <p><strong>Bevis:</strong> ${ghost.proof}</p>
-              <p>${ghost.info}</p>
-            </article>
+              <span>${ghost.evidence.join(" • ")}</span>
+            </button>
           `).join("")}
         </div>
       </section>
-      <section>
+      <section class="phasmo-section">
         <h3>Bevis</h3>
-        <div class="info-grid evidence-grid">
+        <div class="evidence-grid">
           ${evidence.map((item) => `
-            <article class="mini-card">
+            <button class="evidence-card" type="button" data-evidence="${item.name}">
               <h4>${item.name}</h4>
               <p>${item.text}</p>
-            </article>
+            </button>
+          `).join("")}
+        </div>
+      </section>
+    </div>
+    </div>
+  `;
+}
+
+function attachPhasmophobiaHandlers() {
+  document.querySelectorAll(".ghost-list-card").forEach((button) => {
+    button.addEventListener("click", () => showGhostDetail(button.dataset.ghost));
+  });
+
+  document.querySelectorAll(".evidence-card").forEach((button) => {
+    button.addEventListener("click", () => showEvidenceDetail(button.dataset.evidence));
+  });
+}
+
+function showGhostDetail(name) {
+  const ghost = ghosts.find((item) => item.name === name);
+  if (!ghost) return;
+  const detail = document.querySelector("#game-detail");
+  detail.innerHTML = renderGhostDetail(ghost);
+  document.querySelector("#back-to-ghosts").addEventListener("click", () => {
+    detail.innerHTML = renderPhasmophobia();
+    attachPhasmophobiaHandlers();
+  });
+  attachEvidencePillHandlers();
+}
+
+function showEvidenceDetail(name) {
+  const item = evidence.find((entry) => entry.name === name);
+  if (!item) return;
+  const detail = document.querySelector("#game-detail");
+  detail.innerHTML = renderEvidenceDetail(item);
+  document.querySelector("#back-to-ghosts").addEventListener("click", () => {
+    detail.innerHTML = renderPhasmophobia();
+    attachPhasmophobiaHandlers();
+  });
+  document.querySelectorAll(".ghost-list-card").forEach((button) => {
+    button.addEventListener("click", () => showGhostDetail(button.dataset.ghost));
+  });
+}
+
+function renderGhostDetail(ghost) {
+  return `
+    <div class="ghost-detail-page">
+      <button id="back-to-ghosts" class="text-back" type="button">← Tillbaka till spöken</button>
+      <div class="ghost-title-row">
+        <div class="ghost-big-icon">♟</div>
+        <div>
+          <h2 id="game-title">${ghost.name}</h2>
+          <p class="muted">${ghost.description}</p>
+        </div>
+      </div>
+
+      <section class="ghost-evidence-row" aria-label="Bevis">
+        <h3>Bevis</h3>
+        <div class="evidence-pills">
+          ${ghost.evidence.map((item) => `<button type="button" class="evidence-pill" data-evidence="${item}">${item}</button>`).join("")}
+          ${ghost.name === "The Mimic" ? `<span class="evidence-pill fake-evidence">Fake Ghost Orb</span>` : ""}
+        </div>
+      </section>
+
+      <div class="ghost-info-grid">
+        ${renderGhostInfoCard("↯", "Styrkor", ghost.strength, "red")}
+        ${renderGhostInfoCard("▢", "Svagheter", ghost.weakness, "green")}
+        ${renderGhostInfoCard("◜", "Jakthastighet", ghost.speed, "blue")}
+        ${renderGhostInfoCard("☯", "Sanity-tröskel", ghost.sanity, "purple")}
+        ${renderGhostInfoCard("✦", "Unika förmågor", ghost.ability, "gold")}
+        ${renderGhostInfoCard("ⓘ", "Tips", ghost.tips, "cyan")}
+      </div>
+    </div>
+  `;
+}
+
+function renderGhostInfoCard(icon, title, text, tone) {
+  return `
+    <article class="ghost-info-card">
+      <h3 class="tone-${tone}"><span>${icon}</span>${title}</h3>
+      <p>${text}</p>
+    </article>
+  `;
+}
+
+function renderEvidenceDetail(item) {
+  const matchingGhosts = ghosts.filter((ghost) => ghost.evidence.includes(item.name));
+  return `
+    <div class="ghost-detail-page">
+      <button id="back-to-ghosts" class="text-back" type="button">← Tillbaka till spöken</button>
+      <div class="ghost-title-row">
+        <div class="ghost-big-icon">?</div>
+        <div>
+          <h2 id="game-title">${item.name}</h2>
+          <p class="muted">${item.text}</p>
+        </div>
+      </div>
+      <section class="phasmo-section">
+        <h3>Spöken med detta bevis</h3>
+        <div class="ghost-grid compact-ghost-grid">
+          ${matchingGhosts.map((ghost) => `
+            <button class="ghost-list-card" type="button" data-ghost="${ghost.name}">
+              <span class="ghost-icon">♟</span>
+              <h4>${ghost.name}</h4>
+              <span>${ghost.evidence.join(" • ")}</span>
+            </button>
           `).join("")}
         </div>
       </section>
     </div>
   `;
+}
+
+function attachEvidencePillHandlers() {
+  document.querySelectorAll(".evidence-pill[data-evidence]").forEach((button) => {
+    button.addEventListener("click", () => showEvidenceDetail(button.dataset.evidence));
+  });
 }
 
 function renderSatisfactory() {
